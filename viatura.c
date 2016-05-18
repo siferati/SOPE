@@ -13,5 +13,4 @@ viatura *createViatura(int id, char pontoAcesso, int duracao)
 void deleteViatura(viatura *viatura)
 {
   free(viatura);
-  int x;
 }
