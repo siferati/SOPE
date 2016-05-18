@@ -1,6 +1,6 @@
 all: bin/viatura bin/gerador
 
-bin/viatura.c: viatura.c
+bin/viatura: viatura.c
 	cc viatura.c -o bin/viatura -Wall
 
 bin/gerador: gerador.c
