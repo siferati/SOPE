@@ -1,11 +1,11 @@
 #include "viatura.h"
 #include <stdlib.h>
 
-viatura *createViatura(int id, char pontoAcesso, int duracao)
+viatura *createViatura(int id, char portaEntrada, clock_t duracao)
 {
   viatura *viatura = malloc(sizeof(viatura));
   viatura->id = id;
-  viatura->pontoAcesso = pontoAcesso;
+  viatura->portaEntrada = portaEntrada;
   viatura->duracao = duracao;
   return viatura;
 }

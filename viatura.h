@@ -1,26 +1,35 @@
 /**
-* Struct que representa uma viatura
-* Feito por João Pedro Silva e Tiago Silva
-* Turma 6 de SOPE
-*/
+ * @file viatura.h
+ * @author João Pedro Silva (SOPE T06)
+ * @author Tiago Rafael Ferreira da Silva (SOPE T06)
+ * @date Maio 2016
+ * @brief Ficheiro .h com a declaraçao da struct viatura e os metodos a esta associados
+ */
 
+#pragma once
+#include <time.h>
+
+/**
+ * @brief Strcut que representa uma viatura
+ */
 typedef struct viatura{
-  int id;
-  char pontoAcesso;
-  int duracao;
+  int id; /**< ID da viatura (unique) */
+  char portaEntrada; /**< Porta de Entrada ao Parque (N, S, E ou O) */
+  clock_t duracao; /**< Duracao da estadia da viatura no Parque */
 } viatura;
 
 /**
-* Constructor
+* @brief Constructor
+*
 * @param id ID da viatura
-* @param pontoAcesso Char que representa o ponto de acesso da viatura
-* @param int duracao Duracao da estadia da viatura no parque
+* @param portaEntrada Porta de Entrada da viatura ao Parque (N, S, E ou O)
+* @param duracao duracao Duracao da estadia da viatura no parque
 * @return Apontador para a viatura criada
 */
-viatura *createViatura(int id, char pontoAcesso, int duracao);
+viatura *createViatura(int id, char portaEntrada, clock_t duracao);
 
 /**
-* Delete da Viatura (free da memoria)
+* @brief Elimina viatura (liberta memoria alocada)
 *
 * @param viatura Viatura a eliminar
 */
