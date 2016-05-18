@@ -1,9 +1,15 @@
-all: bin/viatura bin/gerador
+all: bin/gerador
 
-bin/viatura.c: viatura.c
-	cc viatura.c -o bin/viatura -Wall
+bin/gerador: bin/gerador.o bin/viatura.o
+	cc -o bin/gerador bin/gerador.o bin/viatura.o
 
-bin/gerador: gerador.c
-	cc gerador.c -o bin/gerador -D_REENTRANT -lpthread -Wall
+bin/gerador.o: gerador.c viatura.h
+	cc -c gerador.c -o bin/gerador.o -D_REENTRANT -lpthread -Wall
 
-PHONY: all
+bin/viatura.o: viatura.c viatura.h
+	cc -c viatura.c -o bin/viatura.o -Wall
+
+clean:
+	-rm bin/gerador bin/gerador.o bin/viatura.o
+
+.PHONY: all clean
