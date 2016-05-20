@@ -1,16 +1,15 @@
 #include "viatura.h"
 #include <stdlib.h>
 
-viatura *createViatura(int id, char portaEntrada, clock_t duracao)
-{
-  viatura *viatura = malloc(sizeof(viatura));
-  viatura->id = id;
-  viatura->portaEntrada = portaEntrada;
-  viatura->duracao = duracao;
-  return viatura;
+viatura *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao) {
+    viatura *v = (viatura *) malloc(sizeof(viatura));
+    v->id = id;
+    v->portaEntrada = portaEntrada;
+    v->duracao = duracao;
+    return v;
 }
 
 void deleteViatura(viatura *viatura)
 {
-  free(viatura);
+    free(viatura);
 }

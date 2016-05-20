@@ -1,6 +1,6 @@
 /**
  * @file viatura.h
- * @author João Pedro Silva (SOPE T06)
+ * @author João Pedro Gomes Silva (SOPE T06)
  * @author Tiago Rafael Ferreira da Silva (SOPE T06)
  * @date Maio 2016
  * @brief Ficheiro .h com a declaraçao da struct viatura e os metodos a esta associados
@@ -9,13 +9,24 @@
 #pragma once
 #include <time.h>
 
+#define NUM_ACESSOS 4
+#define ACESSO_NORTE 78
+#define ACESSO_SUL 83
+#define ACESSO_ESTE 69
+#define ACESSO_OESTE 79
+
+#define MAX_TEMPO_ESTAC 11
+#define GER_PROB_0 100
+#define GER_PROB_1 50
+#define GER_PROB_2 20
+
 /**
- * @brief Strcut que representa uma viatura
+ * @brief Struct que representa uma viatura
  */
-typedef struct viatura{
-  int id; /**< ID da viatura (unique) */
-  char portaEntrada; /**< Porta de Entrada ao Parque (N, S, E ou O) */
-  clock_t duracao; /**< Duracao da estadia da viatura no Parque */
+typedef struct viatura {
+    unsigned int id; /**< ID da viatura (unique) */
+    unsigned int portaEntrada; /**< Porta de Entrada ao Parque (N, S, E ou O) */
+    clock_t duracao; /**< Duracao da estadia da viatura no Parque */
 } viatura;
 
 /**
@@ -26,7 +37,7 @@ typedef struct viatura{
 * @param duracao duracao Duracao da estadia da viatura no parque
 * @return Apontador para a viatura criada
 */
-viatura *createViatura(int id, char portaEntrada, clock_t duracao);
+viatura *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao);
 
 /**
 * @brief Elimina viatura (liberta memoria alocada)

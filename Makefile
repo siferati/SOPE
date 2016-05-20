@@ -1,7 +1,7 @@
 all: bin/gerador bin/parque
 
 bin/gerador: bin/gerador.o bin/viatura.o
-	cc -o bin/gerador bin/gerador.o bin/viatura.o
+	cc -o bin/gerador bin/gerador.o bin/viatura.o -lpthread -Wall
 
 bin/gerador.o: gerador.c viatura.h
 	cc -c gerador.c -o bin/gerador.o -D_REENTRANT -lpthread -Wall
