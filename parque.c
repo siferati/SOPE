@@ -98,5 +98,4 @@ int main(int argc, char *argv[])
   }
   printf("Todas as threads terminaram\n");
   return 0;
-  //test
 }
