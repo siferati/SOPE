@@ -23,6 +23,12 @@ const char acessos[] = {ACESSO_NORTE, ACESSO_SUL, ACESSO_ESTE, ACESSO_OESTE};
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
 void *thr_viatura (void *arg) {
+    if ((pthread_detach(pthread_self())) != 0) {
+        fprintf(stderr, "Erro ao tornar a thread %d detached (%d %s)\n", (int) pthread_self(), errno, strerror(errno));
+        deleteViatura((viatura *) arg);
+        return NULL;
+    }
+
     viatura *v;
     v = (viatura *) malloc(sizeof(viatura));
     v = (viatura *) arg;
@@ -32,7 +38,7 @@ void *thr_viatura (void *arg) {
 
     if ((mkfifo(nomeFifoPrivado, 0600)) != 0) {
         fprintf(stderr, "Erro ao criar o fifo %s (%d %s)\n", nomeFifoPrivado, errno, strerror(errno));
-        free(v);
+        deleteViatura(v);
         return NULL;
     }
 
@@ -46,20 +52,22 @@ void *thr_viatura (void *arg) {
     // para já não funciona, o fifo nao existe
     if ((fd = open(nomeFifoAcesso, O_WRONLY | O_NONBLOCK)) == -1) {
         fprintf(stderr, "Erro ao abrir o fifo %s (%d %s) \n", nomeFifoAcesso, errno, strerror(errno));
-        free(v);
+        deleteViatura(v);
+        remove(nomeFifoPrivado);
         pthread_mutex_unlock(&mut);
         return NULL;
     }
     // escrever informacao sobre este veiculo
-    if ((cfifo(fd)) != 0) {
+    if ((close(fd)) != 0) {
         fprintf(stderr, "Erro ao fechar o fifo %s (%d %s) \n", nomeFifoAcesso, errno, strerror(errno));
-        free(v);
+        deleteViatura(v);
+        remove(nomeFifoPrivado);
         pthread_mutex_unlock(&mut);
         return NULL;
     }
     pthread_mutex_unlock(&mut);
 
-    free(v);
+    deleteViatura(v);
     remove(nomeFifoPrivado);
     return NULL;
 }
@@ -108,5 +116,5 @@ int main(int argc, char *argv[]) {
     }
 
     pthread_mutex_destroy(&mut);
-    return 0;
+    pthread_exit(NULL);
 }
