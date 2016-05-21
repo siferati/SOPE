@@ -27,6 +27,7 @@ typedef struct viatura {
     unsigned int id; /**< ID da viatura (unique) */
     unsigned int portaEntrada; /**< Porta de Entrada ao Parque (N, S, E ou O) */
     clock_t duracao; /**< Duracao da estadia da viatura no Parque */
+    char* nomeFifo; /**< Nome do fifo criado pela thread responsavel por esta viatura */
 } viatura;
 
 /**
@@ -35,9 +36,10 @@ typedef struct viatura {
 * @param id ID da viatura
 * @param portaEntrada Porta de Entrada da viatura ao Parque (N, S, E ou O)
 * @param duracao duracao Duracao da estadia da viatura no parque
+* @param Nome do fifo criado pela thread responsavel por esta viatura
 * @return Apontador para a viatura criada
 */
-viatura *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao);
+viatura *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao, char* nomeFifo);
 
 /**
 * @brief Elimina viatura (liberta memoria alocada)

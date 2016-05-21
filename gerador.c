@@ -53,7 +53,7 @@ void *thr_viatura (void *arg) {
     if ((fd = open(nomeFifoAcesso, O_WRONLY | O_NONBLOCK)) == -1) {
         fprintf(stderr, "Erro ao abrir o fifo %s (%d %s) \n", nomeFifoAcesso, errno, strerror(errno));
         deleteViatura(v);
-        remove(nomeFifoPrivado);
+        unlink(nomeFifoPrivado);
         pthread_mutex_unlock(&mut);
         return NULL;
     }
@@ -61,14 +61,14 @@ void *thr_viatura (void *arg) {
     if ((close(fd)) != 0) {
         fprintf(stderr, "Erro ao fechar o fifo %s (%d %s) \n", nomeFifoAcesso, errno, strerror(errno));
         deleteViatura(v);
-        remove(nomeFifoPrivado);
+        unlink(nomeFifoPrivado);
         pthread_mutex_unlock(&mut);
         return NULL;
     }
     pthread_mutex_unlock(&mut);
 
     deleteViatura(v);
-    remove(nomeFifoPrivado);
+    unlink(nomeFifoPrivado);
     return NULL;
 }
 
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
             char acesso = acessos[nAcesso];
             unsigned int tEstacionamento = (rand() % MAX_TEMPO_ESTAC + 1) * uRelogio;
 
-            viatura *v = createViatura(id, acesso, tEstacionamento);
+            viatura *v = createViatura(id, acesso, tEstacionamento, NULL);
             //printf("created thread %d...\n", id);
             pthread_create(&threads[id++], NULL, thr_viatura, (void *) v);
 
