@@ -105,7 +105,10 @@ int main(int argc, char *argv[]) {
 
             viatura *v = createViatura(id, acesso, tEstacionamento);
             //printf("created thread %d...\n", id);
-            pthread_create(&threads[id++], NULL, thr_viatura, (void *) v);
+            if ((pthread_create(&threads[id++], NULL, thr_viatura, (void *) v)) != 0) {
+                fprintf(stderr, "Erro ao criar a thread com id %s (%d %s)\n", id - 1, errno, strerror(errno));
+                pthread_exit(NULL);
+            }
 
             intGeracao = rand() % GER_PROB_0;
             if (intGeracao < GER_PROB_2) tProxGeracao = elapsed + 2 * uRelogio;
