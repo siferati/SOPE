@@ -8,6 +8,8 @@
 
 #pragma once
 #include <time.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define NUM_ACESSOS 4
 #define ACESSO_NORTE 78
@@ -27,8 +29,8 @@ typedef struct viatura {
     unsigned int id; /**< ID da viatura (unique) */
     unsigned int portaEntrada; /**< Porta de Entrada ao Parque (N, S, E ou O) */
     clock_t duracao; /**< Duracao da estadia da viatura no Parque */
-    char* nomeFifo; /**< Nome do fifo criado pela thread responsavel por esta viatura */
-} viatura;
+    char nomeFifo[16]; /**< Nome do fifo criado pela thread responsavel por esta viatura */
+} viatura_t;
 
 /**
 * @brief Constructor
@@ -39,11 +41,11 @@ typedef struct viatura {
 * @param Nome do fifo criado pela thread responsavel por esta viatura
 * @return Apontador para a viatura criada
 */
-viatura *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao, char* nomeFifo);
+viatura_t *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao, char* nomeFifo);
 
 /**
 * @brief Elimina viatura (liberta memoria alocada)
 *
 * @param viatura Viatura a eliminar
 */
-void deleteViatura(viatura *viatura);
+void deleteViatura(viatura_t *viatura);

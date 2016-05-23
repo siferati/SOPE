@@ -1,9 +1,3 @@
-/**
-* Programa Parque
-* Feito por João Pedro Silva e Tiago Silva
-* Turma 6 de SOPE
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -13,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <sys/times.h>
 #include "viatura.h"
 
 #define NORTE 0
@@ -20,192 +16,206 @@
 #define ESTE 2
 #define OESTE 3
 
-int lotacao; /**< Numero de lugares do Parque */
-int tempo; /**< Tempo de abertura do Parque (basicamente, funciona como um timer que decrementa ate chegar a 0) */
+unsigned int tempoAbertura, numeroLugares, lugaresDisponiveis;
+pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
+double elapsed;
+clock_t tcks;
+FILE *logFile;
 
-/**
-* @brief getline() que funciona com file descriptors
-* Funcao fornecida nos slides das aulas teoricas
-*
-* @param fd File Descriptor do ficheiro a ler
-* @param str String onde se guarda a linha lida
-* @return TRUE se foi lida uma linha, FALSE se nao ha linhas para ler (possivelmente EOF). -1 se erro
-*/
-int readline(int fd, char *str)
-{
-  int n;
-  do
-  {
-    n = read(fd,str,1);
-  }
-  while (n>0 && *str++ != '\0');
-  return (n>0);
-}
-
-/**
-* @brief Thread Arrumador
-*
-* @param arg Acesso do controlador (N, S, E ou O)
-* @return NULL em caso de erro
-*/
-void* arrumador(void* arg)
-{
-exit(0);
-}
-
-/**
-* @brief Thread Controlador
-*
-* @param arg Acesso do controlador (N, S, E ou O)
-* @return NULL em caso de erro
-*/
-void* controlador(void* arg)
-{
-  //Indica qual o ponto de acesso deste controlador: N, S, E ou O
-  char acesso = *(char *) arg;
-  //nome do FIFO (5 chars + '\0')
-  char nomeFifoPrivado[6];
-  sprintf(nomeFifoPrivado, "/tmp/fifo%c", acesso);
-  //criar FIFO
-  if ((mkfifo(nomeFifoPrivado, 0600)) != 0) {
-    fprintf(stderr, "Erro ao criar o fifo %s (%d %s)\n", nomeFifoPrivado, errno, strerror(errno));
-    return NULL;
-  }
-  //file descriptor do fifo
-  int fd;
-  //open fifo para leitura
-  if ((fd = open(nomeFifoPrivado, O_RDONLY | O_NONBLOCK)) == -1) {
-    fprintf(stderr, "Erro ao abrir o fifo %s (%d %s) \n", nomeFifoPrivado, errno, strerror(errno));
-    unlink(nomeFifoPrivado);
-    return NULL;
-  }
-  //criar viatura
-  viatura *viatura = createViatura(0,0,0, NULL);
-  //buffer de leitura
-  char buffer[64];
-  //Index. Ordem de leitura: portaEntrada, duracao, id, nomeFifo
-  int i = 0;
-  //boolean que indica se a thread esta a correr
-  int running = 1;
-  //ler linha a linha.
-  //TODO atoi(buffer) pode nao funcionar uma vez que a maior parte do buffer tem "lixo", se isto acontecer e preciso corrigir
-  while (running) {
-    while (readline(fd, buffer))
-    {
-      switch (i) {
-        case 0: //id
-        viatura->id = atoi(buffer);
-        break;
-        case 1:
-        viatura->portaEntrada = atoi(buffer);
-        break;
-        case 2:
-        viatura->duracao = atoi(buffer);
-        break;
-        case 3:
-        strcpy(viatura->nomeFifo, buffer);
-        //criar arrumador para a viatura
-        pthread_t threadArrumador;
-        if (pthread_create(&threadArrumador, NULL, arrumador, &viatura) != 0)
-        {
-          fprintf(stderr, "Erro ao criar a thread controlador Norte (%d %s)\n", errno, strerror(errno));
-          deleteViatura(viatura);
-          unlink(nomeFifoPrivado);
-          exit(1);
-        }
-        break;
-        default:
-        break;
-      }
-      //se o parque tiver encerrado, fechar o fifo.
-      if (tempo <= 0)
-      {
-        //thread will stop running as soon as there are no more things to read on the FIFO
-        running = 0;
-        if ((close(fd)) != 0) {
-          fprintf(stderr, "Erro ao fechar o fifo %s (%d %s) \n", nomeFifoPrivado, errno, strerror(errno));
-          deleteViatura(viatura);
-          unlink(nomeFifoPrivado);
-          return NULL;
-        }
-      }
-      //set next ite
-      i++;
-      if (i > 3)
-      i = 0;
+void *thr_arrumador(void * arg) {
+    if ((pthread_detach(pthread_self())) != 0) {
+        fprintf(stderr, "Erro ao tornar a thread %d detached (%d %s)\n", (int) pthread_self(), errno, strerror(errno));
+        deleteViatura((viatura_t *) arg);
+        return NULL;
     }
-  }
-  //when it's over, delete the fifo (it was already closed prev)
-  unlink(nomeFifoPrivado);
-  exit(0);
+
+    viatura_t *viatura = (viatura_t *) malloc(sizeof(viatura_t));
+    viatura = (viatura_t *) arg;
+    //printf("THREAD ARRUMADOR ID = %d\n", viatura->id);
+
+    int fd;
+    if ((fd = open(viatura->nomeFifo, O_WRONLY)) == -1) {
+        fprintf(stderr, "Erro ao abrir o fifo %s (%d %s)\n", viatura->nomeFifo, errno, strerror(errno));
+        deleteViatura(viatura);
+        return NULL;
+    }
+
+    if (elapsed/tcks < tempoAbertura) {
+        pthread_mutex_lock(&mut);
+        if (lugaresDisponiveis > 0) {
+            lugaresDisponiveis--;
+            pthread_mutex_unlock(&mut);
+
+            char message[256];
+            sprintf(message, "entrada");
+            if ((write(fd, message, strlen(message) + 1)) == -1) {
+                fprintf(stderr, "Erro ao escrever para o fifo %s (%d %s)\n", viatura->nomeFifo, errno, strerror(errno));
+                unlink(viatura->nomeFifo);
+                deleteViatura(viatura);
+                return NULL;
+            }
+
+            fprintf(logFile, "%7d  ; %4d ; %5d   ; estacionamento\n", (int) elapsed, numeroLugares - lugaresDisponiveis, viatura->id);
+            printf("VIATURA ID = %03d ADMITIDA (NUM_LUGARES = %d)\n", viatura->id, lugaresDisponiveis);
+
+            clock_t start = times(NULL), current = times(NULL), elapsed;
+            while ((elapsed = current - start) < viatura->duracao) {
+                current = times(NULL);
+            }
+
+            sprintf(message, "saida");
+            if ((write(fd, message, strlen(message) + 1)) == -1) {
+                fprintf(stderr, "Erro ao escrever para o fifo %s (%d %s)\n", viatura->nomeFifo, errno, strerror(errno));
+                unlink(viatura->nomeFifo);
+                deleteViatura(viatura);
+                return NULL;
+            }
+
+            pthread_mutex_lock(&mut);
+            lugaresDisponiveis++;
+            pthread_mutex_unlock(&mut);
+
+            printf("VIATURA ID = %03d DE SAIDA (DURACAO = %d    NUM_LUGARES = %d)\n", viatura->id, (int) elapsed, lugaresDisponiveis);
+            fprintf(logFile, "%7d  ; %4d ; %5d   ; saida\n", (int) elapsed, numeroLugares - lugaresDisponiveis, viatura->id);
+        } else {
+            pthread_mutex_unlock(&mut);
+            char message[256];
+            sprintf(message, "cheio!");
+            if ((write(fd, message, strlen(message) + 1)) == -1) {
+                fprintf(stderr, "Erro ao escrever para o fifo %s (%d %s)\n", viatura->nomeFifo, errno, strerror(errno));
+                unlink(viatura->nomeFifo);
+                deleteViatura(viatura);
+                return NULL;
+            }
+
+            printf("VIATURA ID = %03d RECUSADA\n", viatura->id);
+            fprintf(logFile, "%7d  ; %4d ; %5d   ; cheio\n", (int) elapsed, numeroLugares - lugaresDisponiveis, viatura->id);
+        }
+    } else {
+        char *message = "encerrado";
+        if ((write(fd, message, strlen(message))) == -1) {
+            fprintf(stderr, "Erro ao escrever para o fifo %s (%d %s)\n", viatura->nomeFifo, errno, strerror(errno));
+            unlink(viatura->nomeFifo);
+            deleteViatura(viatura);
+            return NULL;
+        }
+
+        fprintf(logFile, "%7d  ; %4d ; %5d   ; encerrado\n", (int) elapsed, numeroLugares - lugaresDisponiveis, viatura->id);
+    }
+
+    if ((close(fd)) != 0) {
+        fprintf(stderr, "Erro ao fechar o fifo %s (%d %s)\n", viatura->nomeFifo, errno, strerror(errno));
+        unlink(viatura->nomeFifo);
+        deleteViatura(viatura);
+        return NULL;
+    }
+
+    //printf("FECHANDO ARRUMADOR %d\n", viatura->id);
+    deleteViatura(viatura);
+    return NULL;
 }
 
-int main(int argc, char *argv[])
-{
-  if (argc != 3)
-  {
-    printf("Usage: %s <n_lugares> <t_abertura>\n", argv[0]);
-    exit(1);
-  }
-  //set lotacao
-  lotacao = atoi(argv[1]);
-  //set tempo
-  tempo = atoi(argv[2]);
-  //criar o array de controladores
-  pthread_t controladores[4];
-  //controlador Norte
-  if (pthread_create(&controladores[NORTE], NULL, controlador, "N") != 0)
-  {
-    fprintf(stderr, "Erro ao criar a thread controlador Norte (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //controlador Sul
-  if (pthread_create(&controladores[SUL], NULL, controlador, "S") != 0)
-  {
-    fprintf(stderr, "Erro ao criar a thread controlador Sul (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //controlador Este
-  if (pthread_create(&controladores[ESTE], NULL, controlador, "E") != 0)
-  {
-    fprintf(stderr, "Erro ao criar a thread controlador Este (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //controlador Oeste
-  if (pthread_create(&controladores[OESTE], NULL, controlador, "O") != 0)
-  {
-    fprintf(stderr, "Erro ao criar a thread controlador Oeste (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //holder para o valor de retorno das threads
-  int *retval;
-  //esperar que a thread controlador Norte termine
-  if (pthread_join(controladores[NORTE], (void **) &retval) != 0 || retval == NULL)
-  {
-    fprintf(stderr, "Erro ao fazer join da thread controlador Norte (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //esperar que a thread controlador Sul termine
-  if (pthread_join(controladores[SUL], (void **) &retval) != 0 || retval == NULL)
-  {
-    fprintf(stderr, "Erro ao fazer join da thread controlador Sul (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //esperar que a thread controlador Este termine
-  if (pthread_join(controladores[ESTE], (void **) &retval) != 0 || retval == NULL)
-  {
-    fprintf(stderr, "Erro ao fazer join da thread controlador Este (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  //esperar que a thread controlador Oeste termine
-  if (pthread_join(controladores[OESTE], (void **) &retval) != 0 || retval == NULL)
-  {
-    fprintf(stderr, "Erro ao fazer join da thread controlador Oeste (%d %s)\n", errno, strerror(errno));
-    exit(1);
-  }
-  printf("Todas as threads terminaram\n");
+void *thr_controlador(void *arg) {
+    char acesso = *(char *) arg;
+    //printf("THREAD CONTROLADOR %c\n", acesso);
 
-  //TODO efetuar e publicar estatísticas globais
+    char nomeFifoAcesso[16];
+    sprintf(nomeFifoAcesso, "/tmp/fifo%c", acesso);
+    if ((mkfifo(nomeFifoAcesso, 0600)) != 0) {
+        fprintf(stderr, "Erro ao criar o fifo %s (%d %s)\n", nomeFifoAcesso, errno, strerror(errno));
+        return NULL;
+    }
 
-  return 0;
+    int fd;
+    if ((fd = open(nomeFifoAcesso, O_RDONLY | O_NONBLOCK)) == -1) {
+        fprintf(stderr, "Erro ao abrir o fifo %s (%d %s)\n", nomeFifoAcesso, errno, strerror(errno));
+        unlink(nomeFifoAcesso);
+        return NULL;
+    }
+
+    viatura_t *buf = (viatura_t *) malloc(sizeof(viatura_t));
+    while (elapsed/tcks < tempoAbertura) {
+        if ((read(fd, buf, sizeof(viatura_t))) > 0) {
+            //printf("%c : ID = %03d    ACESSO = %c    DURACAO = %03d    FIFO = %s\n", acesso, buf->id, buf->portaEntrada, (int) buf->duracao, buf->nomeFifo);
+
+            pthread_t arrumador;
+            viatura_t *viatura = (viatura_t *) malloc(sizeof(viatura_t));
+            *viatura = *buf;
+            if ((pthread_create(&arrumador, NULL, thr_arrumador, viatura)) != 0) {
+                fprintf(stderr, "Erro ao criar a thread arrumador ( veiculo.id = %d )\n", viatura->id);
+                deleteViatura(buf);
+                deleteViatura(viatura);
+                unlink(nomeFifoAcesso);
+                return NULL;
+            }
+        }
+    }
+    while ((read(fd, buf, sizeof(viatura_t))) > 0) {
+        pthread_t arrumador;
+        viatura_t *viatura = (viatura_t *) malloc(sizeof(viatura_t));
+        *viatura = *buf;
+        if ((pthread_create(&arrumador, NULL, thr_arrumador, viatura)) != 0) {
+            fprintf(stderr, "Erro ao criar a thread arrumador ( veiculo.id = %d )\n", viatura->id);
+            deleteViatura(buf);
+            deleteViatura(viatura);
+            unlink(nomeFifoAcesso);
+            return NULL;
+        }
+    }
+
+    if ((close(fd)) != 0) {
+        fprintf(stderr, "Erro ao fechar o fifo %s (%d %s)\n", nomeFifoAcesso, errno, strerror(errno));
+        deleteViatura(buf);
+        unlink(nomeFifoAcesso);
+        return NULL;
+    }
+
+    printf("FECHANDO CONTROLADOR %c\n", acesso);
+    deleteViatura(buf);
+    unlink(nomeFifoAcesso);
+    pthread_exit(0);
+}
+
+int main(int argc, char *argv[]) {
+    pthread_t controladores[NUM_ACESSOS];
+    char acessos[] = {ACESSO_NORTE, ACESSO_SUL, ACESSO_ESTE, ACESSO_OESTE};
+    clock_t start, current;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <n_lugares> <t_abertura>\n", argv[0]);
+        exit(1);
+    }
+
+    numeroLugares = atoi(argv[1]);
+    tempoAbertura = atoi(argv[2]);
+    lugaresDisponiveis = numeroLugares;
+
+    tcks = sysconf(_SC_CLK_TCK);
+    start = times(NULL);
+
+    logFile = fopen("parque.log", "w");
+    fprintf(logFile, "t(ticks) ; nlug ; id_viat ; observ\n");
+
+    int i;
+    for (i = 0; i < NUM_ACESSOS; i++) {
+        if ((pthread_create(&controladores[i], NULL, thr_controlador, &acessos[i])) != 0) {
+            fprintf(stderr, "Erro ao criar a thread controlador %c\n", acessos[i]);
+            exit(1);
+        }
+    }
+
+    while ((elapsed = (double)(current - start))/tcks < tempoAbertura) {
+        current = times(NULL);
+    }
+    printf("CORREU DURANTE: %f s\n", elapsed/tcks);
+
+    for (i = 0; i < NUM_ACESSOS; i++) {
+        if ((pthread_join(controladores[i], NULL)) != 0) {
+            fprintf(stderr, "Erro ao fazer join da thread controlador %c\n", acessos[i]);
+            exit(1);
+        }
+    }
+
+    pthread_mutex_destroy(&mut);
+    pthread_exit(0);
 }
