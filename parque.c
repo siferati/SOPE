@@ -58,9 +58,9 @@ void *thr_arrumador(void * arg) {
             fprintf(logFile, "%7d  ; %4d ; %5d   ; estacionamento\n", (int) elapsed, numeroLugares - lugaresDisponiveis, viatura->id);
             printf("VIATURA ID = %03d ADMITIDA (NUM_LUGARES = %d)\n", viatura->id, lugaresDisponiveis);
 
-            clock_t start = times(NULL), current = times(NULL), elapsed;
-            while ((elapsed = current - start) < viatura->duracao) {
-                current = times(NULL);
+            clock_t startL = times(NULL), currentL = times(NULL), elapsedL;
+            while ((elapsedL = currentL - startL) < viatura->duracao) {
+                currentL = times(NULL);
             }
 
             sprintf(message, "saida");

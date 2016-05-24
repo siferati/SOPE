@@ -67,6 +67,7 @@ void *thr_viatura (void *arg) {
     if ((fd = open(nomeFifoAcesso, O_WRONLY | O_NONBLOCK)) == -1) {
         //fprintf(stderr, "Erro ao abrir o fifo %s (%d %s)\n", nomeFifoAcesso, errno, strerror(errno));
         fprintf(logFile, "%7d  ; %4d    ; %4c   ; %6d     ;    ?   ; encerrado\n", (int) elapsed, v->id, v->portaEntrada, (int) v->duracao);
+        close(fdPrivado); // maybe
         unlink(v->nomeFifo);
         deleteViatura(v);
         pthread_mutex_unlock(&mut);
@@ -94,6 +95,9 @@ void *thr_viatura (void *arg) {
     }
     if ((strcmp(buf, "cheio!")) == 0) {
         fprintf(logFile, "%7d  ; %4d    ; %4c   ; %6d     ;    ?   ; cheio!\n", (int) elapsed, v->id, v->portaEntrada, (int) v->duracao);
+    }
+    if ((strcmp(buf, "encerrado")) == 0) {
+        fprintf(logFile, "%7d  ; %4d    ; %4c   ; %6d     ;    ?   ; encerrado\n", (int) elapsed, v->id, v->portaEntrada, (int) v->duracao);
     }
     clock_t lifetime = times(NULL) - begin;
     if ((strcmp(buf, "saida")) == 0) {
