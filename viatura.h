@@ -38,7 +38,7 @@ typedef struct viatura {
 * @param id ID da viatura
 * @param portaEntrada Porta de Entrada da viatura ao Parque (N, S, E ou O)
 * @param duracao duracao Duracao da estadia da viatura no parque
-* @param Nome do fifo criado pela thread responsavel por esta viatura
+* @param nomeFifo Nome do fifo criado pela thread responsavel por esta viatura
 * @return Apontador para a viatura criada
 */
 viatura_t *createViatura(unsigned int id, unsigned int portaEntrada, clock_t duracao, char* nomeFifo);
